@@ -230,6 +230,11 @@ class GitClient(VcsClientBase):
                 'output': "Repository data lacks the 'url' value",
                 'returncode': 1
             }
+        
+        # extended functionality for exact versions
+        exact_versions = tuple()
+        if command.version:
+            command.version, *exact_versions = command.version.split('@')
 
         self._check_executable()
         if GitClient.is_repository(self.path):
@@ -467,6 +472,39 @@ class GitClient(VcsClientBase):
                 return result_submodule
             cmd += ' && ' + ' '.join(cmd_submodule)
             output = '\n'.join([output, result_submodule['output']])
+
+        # reset to exact version
+        for exact in exact_versions:
+            if not command.force: 
+                cmd_unstaged = [
+                    GitClient._executable, 'status', '--porcelain']
+                result_unstaged = self._run_command(cmd_unstaged)
+                if result_unstaged['output']:
+                    # result_unstaged['returncode'] = 1
+                    result_unstaged['output'] = \
+                        'Unstaged changes will not be discarded: %s' % \
+                        result_unstaged['output']
+                # return result_unstaged
+
+                cmd_unpushed = [
+                    GitClient._executable, 'cherry', '-v']
+                result_unpushed = self._run_command(cmd_unpushed)
+                if result_unpushed['output']:
+                    result_unpushed['returncode'] = 1
+                    result_unpushed['output'] = \
+                        'Unpushed commits will not be reset: %s' % \
+                        result_unpushed['output']
+                    return result_unpushed
+            
+            cmd_reset = [
+                GitClient._executable, 'reset', exact, '--hard']
+            if True:
+                result_reset = self._run_command(cmd_reset)
+                if result_reset['returncode']:
+                    return result_reset
+                output += '\nbranch is set to %s@%s' % (command.version, exact)
+            else:
+                print(cmd_reset)
 
         return {
             'cmd': cmd,
