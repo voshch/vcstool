@@ -503,6 +503,15 @@ class GitClient(VcsClientBase):
             if result_reset['returncode']:
                 return result_reset
             output += '\nbranch is set to %s@%s' % (command.version, exact)
+            break
+        else:
+            if command.ff:
+                # fast-forward
+                cmd_ff = [GitClient._executable, 'pull']
+                result_ff = self._run_command(cmd_ff)
+
+                if result_ff['returncode']:
+                    return result_ff
 
         return {
             'cmd': cmd,
