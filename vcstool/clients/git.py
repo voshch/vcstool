@@ -230,7 +230,7 @@ class GitClient(VcsClientBase):
                 'output': "Repository data lacks the 'url' value",
                 'returncode': 1
             }
-        
+
         # extended functionality for exact versions
         exact_versions = tuple()
         if command.version:
@@ -475,7 +475,7 @@ class GitClient(VcsClientBase):
 
         # reset to exact version
         for exact in exact_versions:
-            if not command.force: 
+            if not command.force:
                 cmd_unstaged = [
                     GitClient._executable, 'status', '--porcelain']
                 result_unstaged = self._run_command(cmd_unstaged)
@@ -484,7 +484,7 @@ class GitClient(VcsClientBase):
                     result_unstaged['output'] = \
                         'Unstaged changes will not be discarded: %s' % \
                         result_unstaged['output']
-                # return result_unstaged
+                    # return result_unstaged
 
                 cmd_unpushed = [
                     GitClient._executable, 'cherry', '-v']
@@ -495,16 +495,14 @@ class GitClient(VcsClientBase):
                         'Unpushed commits will not be reset: %s' % \
                         result_unpushed['output']
                     return result_unpushed
-            
+
             cmd_reset = [
                 GitClient._executable, 'reset', exact, '--hard']
-            if True:
-                result_reset = self._run_command(cmd_reset)
-                if result_reset['returncode']:
-                    return result_reset
-                output += '\nbranch is set to %s@%s' % (command.version, exact)
-            else:
-                print(cmd_reset)
+
+            result_reset = self._run_command(cmd_reset)
+            if result_reset['returncode']:
+                return result_reset
+            output += '\nbranch is set to %s@%s' % (command.version, exact)
 
         return {
             'cmd': cmd,
