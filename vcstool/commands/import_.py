@@ -1,21 +1,19 @@
 import argparse
 import os
-from shutil import which
 import sys
 import urllib.request as request
+from shutil import which
+
+import yaml
 
 from vcstool import __version__ as vcstool_version
 from vcstool.clients import vcstool_clients
 from vcstool.clients.vcs_base import run_command
-from vcstool.executor import ansi
-from vcstool.executor import execute_jobs
-from vcstool.executor import output_repositories
-from vcstool.executor import output_results
+from vcstool.executor import (ansi, execute_jobs, output_repositories,
+                              output_results)
 from vcstool.streams import set_streams
-import yaml
 
-from .command import add_common_arguments
-from .command import Command
+from .command import Command, add_common_arguments
 
 
 class ImportCommand(Command):
@@ -35,6 +33,7 @@ class ImportCommand(Command):
         self.recursive = recursive
         self.shallow = shallow
         self.ff = args.ff
+        self.add_existing = args.add_existing
 
 
 def get_parser():
@@ -61,6 +60,9 @@ def get_parser():
         '--skip-existing', action='store_true', default=False,
         help="Don't overwrite existing directories or change custom checkouts "
              'in repos using the same URL (but fetch repos with same URL)')
+    group.add_argument(
+        '--add-existing', action='store_true', default=False,
+        help="Add new remote to existing repos if URL is different")
     group.add_argument(
         '--ff', action='store_true', default=False,
         help="fast-forward repos when version is not exact")

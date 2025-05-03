@@ -1,11 +1,11 @@
 import os
-from shutil import which
 import subprocess
+from shutil import which
 
 from vcstool.executor import USE_COLOR
 
-from .vcs_base import VcsClientBase
 from ..util import rmtree
+from .vcs_base import VcsClientBase
 
 
 class GitClient(VcsClientBase):
@@ -246,27 +246,43 @@ class GitClient(VcsClientBase):
                 if url == command.url:
                     break
             else:
-                if command.skip_existing:
-                    return {
-                        'cmd': '',
-                        'cwd': self.path,
-                        'output':
-                            'Skipped existing repository with different URL',
-                        'returncode': 0
-                    }
-                if not command.force:
-                    return {
-                        'cmd': '',
-                        'cwd': self.path,
-                        'output':
-                            'Path already exists and contains a different '
-                            'repository',
-                        'returncode': 1
-                    }
-                try:
-                    rmtree(self.path)
-                except OSError:
-                    os.remove(self.path)
+                if command.add_existing:
+
+                    result_origins = self._run_command([GitClient._executable, 'remote'])
+                    if result_origins['returncode']:
+                        return result_origins
+                    origins = result_origins['output'].split('\n')
+
+                    i = 0
+                    while (remote := 'origin' + str(i or '')) in origins:
+                        i += 1
+
+                    result_add = self._run_command([GitClient._executable, 'remote', 'add', remote, command.url])
+                    if result_add['returncode']:
+                        return result_add
+                else:
+                    if command.skip_existing:
+                        return {
+                            'cmd': '',
+                            'cwd': self.path,
+                            'output':
+                                'Skipped existing repository with different URL',
+                            'returncode': 0
+                        }
+
+                    if not command.force:
+                        return {
+                            'cmd': '',
+                            'cwd': self.path,
+                            'output':
+                                'Path already exists and contains a different '
+                                'repository',
+                            'returncode': 1
+                        }
+                    try:
+                        rmtree(self.path)
+                    except OSError:
+                        os.remove(self.path)
 
         elif command.skip_existing and os.path.exists(self.path):
             return {
