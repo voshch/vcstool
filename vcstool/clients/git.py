@@ -237,13 +237,17 @@ class GitClient(VcsClientBase):
             command.version, *exact_versions = command.version.split('@')
 
         self._check_executable()
+        remote = None
+        version_name = None
+        version_type = None
         if GitClient.is_repository(self.path):
             # verify that existing repository is the same
             result_urls = self._get_remote_urls()
             if result_urls['returncode']:
                 return result_urls
-            for url, remote in result_urls['output']:
+            for url, remote_candidate in result_urls['output']:
                 if url == command.url:
+                    remote = remote_candidate
                     break
             else:
                 if command.add_existing:
@@ -491,34 +495,50 @@ class GitClient(VcsClientBase):
 
         # reset to exact version
         for exact in exact_versions:
+            branch_name = command.version
+
+            cmd_fetch = [GitClient._executable, 'fetch', remote or 'origin', branch_name]
+            result_fetch = self._run_command(cmd_fetch)
+            if result_fetch['returncode']:
+                return result_fetch
+
             if not command.force:
-                cmd_unstaged = [
-                    GitClient._executable, 'status', '--porcelain']
+                # Check for unstaged changes
+                cmd_unstaged = [GitClient._executable, 'status', '--porcelain']
                 result_unstaged = self._run_command(cmd_unstaged)
                 if result_unstaged['output']:
-                    # result_unstaged['returncode'] = 1
-                    result_unstaged['output'] = \
-                        'Unstaged changes will not be discarded: %s' % \
-                        result_unstaged['output']
-                    # return result_unstaged
+                    result_unstaged['output'] = (
+                        'Unstaged changes will not be discarded: %s' % result_unstaged['output'])
+                    return result_unstaged
 
-                cmd_unpushed = [
-                    GitClient._executable, 'cherry', '-v']
+                # Check for unpushed commits
+                cmd_unpushed = [GitClient._executable, 'log', '@{push}..']
                 result_unpushed = self._run_command(cmd_unpushed)
                 if result_unpushed['output']:
-                    result_unpushed['returncode'] = 1
-                    result_unpushed['output'] = \
-                        'Unpushed commits will not be reset: %s' % \
-                        result_unpushed['output']
+                    result_unpushed['output'] = (
+                        'Unpushed commits would be lost. Aborting.\n' + result_unpushed['output'])
                     return result_unpushed
 
-            cmd_reset = [
-                GitClient._executable, 'reset', exact, '--hard']
+            # Discard unstaged changes
+            cmd_hard_reset = [GitClient._executable, 'reset', '--hard']
+            result_hard_reset = self._run_command(cmd_hard_reset)
+            if result_hard_reset['returncode']:
+                return result_hard_reset
 
-            result_reset = self._run_command(cmd_reset)
-            if result_reset['returncode']:
-                return result_reset
-            output += '\nbranch is set to %s@%s' % (command.version, exact)
+            # Checkout branch at hash
+            cmd_checkout = [GitClient._executable, 'checkout', '-B', branch_name, exact]
+            result_checkout = self._run_command(cmd_checkout)
+            if result_checkout['returncode']:
+                return result_checkout
+            output += '\nbranch %s set to %s' % (branch_name, exact)
+
+            # Set upstream tracking
+            if remote:
+                cmd_upstream = [GitClient._executable, 'branch', '--set-upstream-to=%s/%s' % (remote, branch_name), branch_name]
+                result_upstream = self._run_command(cmd_upstream)
+                if result_upstream['returncode']:
+                    return result_upstream
+                output += '\ntracking branch set to %s/%s' % (remote, branch_name)
             break
         else:
             if command.ff:
