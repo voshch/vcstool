@@ -543,8 +543,7 @@ class GitClient(VcsClientBase):
         else:
             if command.ff:
                 # fast-forward
-                cmd_ff = [GitClient._executable, 'pull']
-                result_ff = self._run_command(cmd_ff)
+                result_ff = self.pull(command)
 
                 if result_ff['returncode']:
                     return result_ff

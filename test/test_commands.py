@@ -14,6 +14,7 @@ file_uri_scheme = 'file://' if sys.platform != 'win32' else 'file:///'
 REPOS_FILE = os.path.join(os.path.dirname(__file__), 'list.repos')
 REPOS_FILE_URL = file_uri_scheme + REPOS_FILE
 REPOS2_FILE = os.path.join(os.path.dirname(__file__), 'list2.repos')
+FF_REPOS_FILE = os.path.join(os.path.dirname(__file__), 'ff.repos')
 TEST_WORKSPACE = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), 'test_workspace')
 
@@ -235,6 +236,12 @@ invocation.
         subprocess.check_output(
             ['git', 'remote', 'remove', 'foo'],
             stderr=subprocess.STDOUT, cwd=cwd_vcstool)
+
+    def test_reimport_ff(self):
+        output = run_command(
+            'import', ['--ff', '--input', FF_REPOS_FILE, '.'])
+        assert b'=== ./immutable/hash (git) ===' in output
+        assert b'=== ./vcstool (git) ===' in output
 
     def test_reimport_failed(self):
         cwd_tag = os.path.join(TEST_WORKSPACE, 'immutable', 'tag')
